@@ -8,4 +8,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'shrusticlothing.com', // 👈 apna domain add kiya
+    ],
+  },
 })
