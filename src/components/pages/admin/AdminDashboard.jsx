@@ -46,9 +46,9 @@ const sidebarItems = [
         label: 'Cutting Entry',
         icon: <FaCut />,
         children: [
-            { label: 'View All Staff', path: 'cutting/view-staff' },
+            { label: 'View All Entry', path: 'cutting/view-staff' },
             { label: 'Add Range', path: 'cutting/Add-Range' },
-            { label: 'Add New Staff', path: 'cutting/add-staff' },
+            { label: 'New Cutting Entry', path: 'cutting/add-staff' },
         ]
     },
     {

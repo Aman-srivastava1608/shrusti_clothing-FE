@@ -122,7 +122,7 @@ const AdvancePayment = () => {
         const formattedDate = `${year}-${month}-${day}`;
 
         try {
-            await axios.post(`${apiBaseUrl}/api/advance-payment/add`, {
+            await axios.post(`${apiBaseUrl}/api/advance-payments/add`, {
                 ...formData,
                 paymentDate: formattedDate,
             }, {

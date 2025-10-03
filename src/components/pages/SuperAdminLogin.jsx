@@ -11,11 +11,14 @@ export default function SuperAdminLogin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      console.log('api url is',import.meta.env.VITE_API_BASE_URL)
+    
       const res = await axios.post(`${apiBaseUrl}/api/auth/admin/login`, {
         username,
         password
         
       });
+
 
       localStorage.setItem("token", res.data.token);
       navigate("/superadmin/dashboard");

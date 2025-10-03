@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 // This component manages and displays a table of number ranges.
 const RangePage = () => {
@@ -25,7 +26,7 @@ const RangePage = () => {
 
   // ✅ Axios instance with token
   const api = axios.create({
-    baseURL: "http://localhost:5000/api/ranges",
+    baseURL: `${apiBaseUrl}/api/ranges`,
     headers: {
       Authorization: `Bearer ${token}`,
     },

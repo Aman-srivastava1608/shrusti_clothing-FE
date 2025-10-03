@@ -1,27 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 const OperationsTable = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(null);
   const [operations, setOperations] = useState([]);
-  const [newOperationName, setNewOperationName] = useState('');
-  const [editedOperationName, setEditedOperationName] = useState('');
   const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("branchToken");
 
-  // ✅ Axios instance with token
-  const api = axios.create({
-    baseURL: `${apiBaseUrl}/api/operations`,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  // ✅ Stable axios instance with token
+  const api = useMemo(() => {
+    return axios.create({
+      baseURL: `${apiBaseUrl}/api/operations`,
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+  }, [token]);
 
-  // Backend se operations fetch karne ka function
+  // ✅ Fetch operations
   const fetchOperations = async () => {
+    if (!token) {
+      alert("No token found! Please login again.");
+      return;
+    }
     setLoading(true);
     try {
       const response = await api.get("/");
@@ -31,6 +36,10 @@ const OperationsTable = () => {
       }));
       setOperations(operationsWithSNo);
     } catch (error) {
+      if (error.response?.status === 401) {
+        alert("Session expired! Please login again.");
+        localStorage.removeItem("branchToken");
+      }
       console.error("Error fetching operations:", error);
     } finally {
       setLoading(false);
@@ -38,20 +47,23 @@ const OperationsTable = () => {
   };
 
   useEffect(() => {
+    console.log("Branch Token from localStorage:", token);
     fetchOperations();
   }, []);
 
-  // ✅ Naya operation add
-  const handleAddOperation = async (e) => {
-    e.preventDefault();
-    if (!newOperationName) {
+  // ✅ Add operation
+  const handleAddOperation = async (name) => {
+    if (!token) {
+      alert("Token missing, please login again.");
+      return;
+    }
+    if (!name) {
       alert("Operation name is required!");
       return;
     }
     try {
-      await api.post("/add", { name: newOperationName });
+      await api.post("/add", { name });
       alert("Operation added successfully!");
-      setNewOperationName("");
       setIsAdding(false);
       fetchOperations();
     } catch (error) {
@@ -60,10 +72,14 @@ const OperationsTable = () => {
     }
   };
 
-  // ✅ Operation update
-  const handleUpdateOperation = async (id) => {
+  // ✅ Update operation
+  const handleUpdateOperation = async (id, name) => {
+    if (!token) {
+      alert("Token missing, please login again.");
+      return;
+    }
     try {
-      await api.put(`/${id}`, { name: editedOperationName });
+      await api.put(`/${id}`, { name });
       alert("Operation updated successfully!");
       setIsEditing(null);
       fetchOperations();
@@ -73,8 +89,12 @@ const OperationsTable = () => {
     }
   };
 
-  // ✅ Operation delete
+  // ✅ Delete operation
   const handleDeleteOperation = async (id) => {
+    if (!token) {
+      alert("Token missing, please login again.");
+      return;
+    }
     if (window.confirm("Are you sure you want to delete this operation?")) {
       try {
         await api.delete(`/${id}`);
@@ -87,9 +107,8 @@ const OperationsTable = () => {
     }
   };
 
-  const handleEditOperation = (id, name) => {
+  const handleEditOperation = (id) => {
     setIsEditing(id);
-    setEditedOperationName(name);
     setIsAdding(false);
   };
 
@@ -99,58 +118,93 @@ const OperationsTable = () => {
   };
 
   // ✅ Add operation form
-  const AddOperationForm = () => (
-    <div className="mt-4 p-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-800">
-      <h3 className="text-lg font-bold mb-2">Add New Operation</h3>
-      <form onSubmit={handleAddOperation}>
-        <input
-          type="text"
-          placeholder="Operation Name"
-          value={newOperationName}
-          onChange={(e) => setNewOperationName(e.target.value)}
-          className="border p-2 rounded w-full mb-2"
-          required
-        />
-        <div className="flex gap-2">
-          <button type="submit" className="bg-[#6a053c] text-white py-2 px-4 rounded">
-            Save
-          </button>
-          <button type="button" onClick={handleCancel} className="bg-gray-500 text-white py-2 px-4 rounded">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  );
+  const AddOperationForm = () => {
+    const [localName, setLocalName] = useState("");
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      handleAddOperation(localName);
+      setLocalName("");
+    };
+
+    return (
+      <div className="mt-4 p-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-800">
+        <h3 className="text-lg font-bold mb-2">Add New Operation</h3>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Operation Name"
+            value={localName}
+            onChange={(e) => setLocalName(e.target.value)}
+            className="border p-2 rounded w-full mb-2"
+            required
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="bg-[#6a053c] text-white py-2 px-4 rounded"
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="bg-gray-500 text-white py-2 px-4 rounded"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
 
   // ✅ Edit operation form
-  const EditOperationForm = ({ op }) => (
-    <div className="mt-4 p-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-800">
-      <h3 className="text-lg font-bold mb-2">Edit Operation {op.sNo}</h3>
-      <form onSubmit={(e) => { e.preventDefault(); handleUpdateOperation(op.id); }}>
-        <input
-          type="text"
-          value={editedOperationName}
-          onChange={(e) => setEditedOperationName(e.target.value)}
-          className="border p-2 rounded w-full mb-2"
-          required
-        />
-        <div className="flex gap-2">
-          <button type="submit" className="bg-blue-500 text-white py-2 px-4 rounded">
-            Update
-          </button>
-          <button type="button" onClick={handleCancel} className="bg-gray-500 text-white py-2 px-4 rounded">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  );
+  const EditOperationForm = ({ op }) => {
+    const [localName, setLocalName] = useState(op.name);
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      handleUpdateOperation(op.id, localName);
+    };
+
+    return (
+      <div className="mt-4 p-4 border border-gray-300 rounded-lg bg-gray-50 text-gray-800">
+        <h3 className="text-lg font-bold mb-2">Edit Operation {op.sNo}</h3>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={localName}
+            onChange={(e) => setLocalName(e.target.value)}
+            className="border p-2 rounded w-full mb-2"
+            required
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="bg-blue-500 text-white py-2 px-4 rounded"
+            >
+              Update
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="bg-gray-500 text-white py-2 px-4 rounded"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-800 text-lg font-semibold">Loading operations...</div>
+        <div className="text-gray-800 text-lg font-semibold">
+          Loading operations...
+        </div>
       </div>
     );
   }
@@ -170,7 +224,11 @@ const OperationsTable = () => {
       </div>
 
       {isAdding && <AddOperationForm />}
-      {isEditing && <EditOperationForm op={operations.find(op => op.id === isEditing)} />}
+      {isEditing && (
+        <EditOperationForm
+          op={operations.find((op) => op.id === isEditing)}
+        />
+      )}
 
       <div className="overflow-x-auto mt-4">
         <table className="min-w-full bg-white border border-gray-200">
@@ -183,15 +241,30 @@ const OperationsTable = () => {
           </thead>
           <tbody className="text-gray-600 text-sm font-light">
             {operations.map((op, index) => (
-              <tr key={op.id || index} className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="py-3 px-6 text-center whitespace-nowrap border-r">{op.sNo}</td>
+              <tr
+                key={op.id || index}
+                className="border-b border-gray-200 hover:bg-gray-50"
+              >
+                <td className="py-3 px-6 text-center whitespace-nowrap border-r">
+                  {op.sNo}
+                </td>
                 <td className="py-3 px-6 text-left border-r">{op.name}</td>
                 <td className="py-3 px-6 text-center flex items-center justify-center space-x-2">
-                  <button onClick={() => handleEditOperation(op.id, op.name)} className="text-blue-500 hover:text-blue-700">
-                    <span role="img" aria-label="edit">✏️</span>
+                  <button
+                    onClick={() => handleEditOperation(op.id)}
+                    className="text-blue-500 hover:text-blue-700"
+                  >
+                    <span role="img" aria-label="edit">
+                      ✏️
+                    </span>
                   </button>
-                  <button onClick={() => handleDeleteOperation(op.id)} className="text-red-500 hover:text-red-700">
-                    <span role="img" aria-label="delete">🗑️</span>
+                  <button
+                    onClick={() => handleDeleteOperation(op.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <span role="img" aria-label="delete">
+                      🗑️
+                    </span>
                   </button>
                 </td>
               </tr>
